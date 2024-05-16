@@ -1,0 +1,59 @@
+# Update bump details accordingly. Use bump check to confirm.
+# bump: prometheus-version /PROMETHEUS_VERSION="(.*)"/ https://github.com/prometheus/prometheus/releases/download/v2.45.5/prometheus-2.45.5.linux-s390x.tar.gz|semver:*
+PROMETHEUS_VERSION="2.45.5" # Specify a stable release
+export ZOPEN_STABLE_TAG="v${PROMETHEUS_VERSION}"
+export ZOPEN_STABLE_URL="https://github.com/prometheus/prometheus.git"
+export ZOPEN_STABLE_DEPS="make grep wharf git comp_clang comp_go"
+export ZOPEN_DEV_URL="https://github.com/prometheus/prometheus.git"
+export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go"
+export ZOPEN_BUILD_LINE="STABLE"
+export ZOPEN_RUNTIME_DEPS="bash"
+export ZOPEN_CATEGORIES="database devops graphics"
+export ZOPEN_COMP="CLANG"
+
+export ZOPEN_CONFIGURE="zopen_wharf"
+
+zopen_init()
+{
+  export CGO_ENABLED=0
+  # Go installs binaries, so create the bin dir as well
+  export GOBIN=$ZOPEN_INSTALL_DIR/bin
+  export PATH=$PATH:$GOROOT/go-build-zos/bin
+  mkdir -p $ZOPEN_INSTALL_DIR
+}
+
+zopen_build()
+{
+  go install github.com/prometheus/promu@latest
+  make build
+  rm $GOBIN/promu
+}
+
+zopen_wharf()
+{
+  go work init ./prometheus
+  wharf ./cli/...
+  wharf ./prometheus/discovery/file
+  cd ./cli
+}
+
+
+zopen_check_results()
+{
+  dir="$1"
+  pfx="$2"
+  chk="$1/$2_check.log"
+
+  # Echo the following information to gauge build health
+  echo "actualFailures:0"
+  echo "totalTests:1"
+  echo "expectedFailures:0"
+  echo "expectedTotalTests:1"
+}
+
+zopen_get_version()
+{
+  # Modify to echo the version of your tool/library
+  # Rather than hardcoding the version, obtain the version by running the tool/library
+  echo "1.0.0"
+}
