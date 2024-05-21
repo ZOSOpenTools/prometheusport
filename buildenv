@@ -3,15 +3,17 @@
 PROMETHEUS_VERSION="2.45.5" # Specify a stable release
 export ZOPEN_STABLE_TAG="v${PROMETHEUS_VERSION}"
 export ZOPEN_STABLE_URL="https://github.com/prometheus/prometheus.git"
-export ZOPEN_STABLE_DEPS="make grep wharf git comp_clang comp_go"
+export ZOPEN_STABLE_DEPS="make grep wharf git comp_clang comp_go findutils tar bzip2 gzip"
 export ZOPEN_DEV_URL="https://github.com/prometheus/prometheus.git"
-export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go"
+export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go findutils tar bzip2 gizp"
 export ZOPEN_BUILD_LINE="STABLE"
 export ZOPEN_RUNTIME_DEPS="bash"
 export ZOPEN_CATEGORIES="database devops graphics"
 export ZOPEN_COMP="CLANG"
 
 export ZOPEN_CONFIGURE="zopen_wharf"
+export ZOPEN_MAKE="skip"
+export ZOPEN_INSTALL="zopen_install"
 
 zopen_init()
 {
@@ -20,19 +22,34 @@ zopen_init()
   export GOBIN=$ZOPEN_INSTALL_DIR/bin
   export PATH=$PATH:$GOROOT/go-build-zos/bin
   mkdir -p $ZOPEN_INSTALL_DIR
-  export PATH="/home/zhilong/node/node-v20.8.1-os390-s390x-202311022030/bin:$PATH"
-  export npm_config_nodedir="/home/zhilong/node/node-v20.8.1-os390-s390x-202311022030"
-  export npm_config_zoslib_include_dir="/home/zhilong/node/node-v20.8.1-os390-s390x-202311022030/include/node/zoslib"
-  export npm_config_zoslib_include_dir_cpp="/home/zhilong/node/node-v20.8.1-os390-s390x-202311022030/include/node/zoslib/c++/v1"
-  npm install -g npm@10.8.0
+  export _BPXK_AUTOCVT=ON
+  export _CEE_RUNOPTS="$_CEE_RUNOPTS FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
+  export _TAG_REDIR_IN=txt
+  export _TAG_REDIR_ERR=txt
+  export _TAG_REDIR_OUT=txt
+  export PATH="/home/zhilong/nodejs/node-v20.8.1-os390-s390x-202311022030/bin:$PATH"
+  export npm_config_nodedir="/home/zhilong/nodejs/node-v20.8.1-os390-s390x-202311022030"
+  export npm_config_zoslib_include_dir="/home/zhilong/nodejs/node-v20.8.1-os390-s390x-202311022030/include/node/zoslib"
+  export npm_config_zoslib_include_dir_cpp="/home/zhilong/nodejs/node-v20.8.1-os390-s390x-202311022030/include/node/zoslib/c++/v1"
+  export CC=clang
+  export CXX=clang++
+  export LINK=clang++
 
 }
 
-zopen_build()
+zopen_install()
 {
+  npm install -g npm@10.7.0
+  cd ..
+  mkdir "$(pwd)/go/bin"
+  OLD_GOBIN=$GOBIN
+  export GOBIN="$(pwd)/go/bin"
   go install github.com/prometheus/promu@latest
+  @echo "GOBIN = $GOBIN  GOPATH=$GOPATH"
+  cd ./prometheus
   make build
   rm $GOBIN/promu
+  export GOBIN=$OLD_GOBIN
 }
 
 zopen_wharf()
