@@ -57,7 +57,7 @@ zopen_wharf()
   cd ..
   go work init ./prometheus
   wharf ./prometheus/...
-  wharf ./prometheus/discovery/file
+  wharf -f ./prometheus/discovery/file
   cd ./prometheus
 }
 
