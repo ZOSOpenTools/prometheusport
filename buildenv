@@ -27,19 +27,22 @@ zopen_init()
   export _TAG_REDIR_ERR=txt
   export _TAG_REDIR_OUT=txt
 
-  export PATH="/home/zhilong/node/node-v20.11.0-os390-s390x-202402131732/bin:$PATH"
-  export npm_config_nodedir="/home/zhilong/node/node-v20.11.0-os390-s390x-202402131732"
-  export npm_config_zoslib_include_dir="/home/zhilong/node/node-v20.11.0-os390-s390x-202402131732/include/node/zoslib"
-  export npm_config_zoslib_include_dir_cpp="/home/zhilong/node/node-v20.11.0-os390-s390x-202402131732/include/node/zoslib/c++/v1"
+  export PATH="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100/bin:$PATH"
+  export npm_config_nodedir="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100"
+  export npm_config_zoslib_include_dir="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100/include/node/zoslib"
+  export npm_config_zoslib_include_dir_cpp="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100/include/node/zoslib/c++/v1"
+
   export CC=clang
   export CXX=clang++
   export LINK=clang++
 
-  ls -l  /home/zhilong/zopen/usr/local/zopen/prometheus/prometheus-heads.v2.45.5/
+  echo "zopen init"
+  ls -l go_package_port
 }
 
 zopen_install()
 {
+  ls -l go_package_port
   mkdir -p $ZOPEN_INSTALL_DIR
 #  npm install -g npm@10.7.0
   cd ..
@@ -59,9 +62,13 @@ zopen_install()
 zopen_wharf()
 {
   cd ..
+  git apply ./patches/wharf_patch
   go work init ./prometheus
-  wharf ./prometheus/...
-  wharf -f ./prometheus/discovery/file
+  go work use ./go_package_port/github.com/edsrzf/mmap-go
+  go work use ./go_package_port/github.com/fsnotify/fsnotify
+  go work edit -replace=golang.org/x/sys=golang.org/x/sys@v0.20.0
+  # wharf ./prometheus/...
+  # wharf -f ./prometheus/discovery/file
   cd ./prometheus
 }
 
