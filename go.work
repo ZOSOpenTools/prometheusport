@@ -1,0 +1,9 @@
+go 1.22.2
+
+use (
+	./prometheus
+	./package_port/github.com/edsrzf/mmap-go
+	./package_port/github.com/fsnotify/fsnotify
+)
+
+replace golang.org/x/sys => golang.org/x/sys v0.20.0
