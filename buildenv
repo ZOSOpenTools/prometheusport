@@ -30,7 +30,7 @@ zopen_init()
 
 zopen_install()
 {
-  mkdir -p $ZOPEN_INSTALL_DIR
+  mkdir -p $ZOPEN_INSTALL_DIR/bin
 #  npm install -g npm@10.7.0
   cd ..
   mkdir "$(pwd)/go/bin"
@@ -43,8 +43,8 @@ zopen_install()
   make build
   # rm $GOBIN/promu
   export GOBIN=$OLD_GOBIN
-  mv prometheus $ZOPEN_INSTALL_DIR/prometheus
-  mv promtool $ZOPEN_INSTALL_DIR/promtool
+  mv prometheus $ZOPEN_INSTALL_DIR/bin/prometheus
+  mv promtool $ZOPEN_INSTALL_DIR/bin/promtool
 }
 
 zopen_wharf()
