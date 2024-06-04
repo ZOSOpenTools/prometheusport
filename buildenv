@@ -26,11 +26,10 @@ zopen_init()
   export _TAG_REDIR_IN=txt
   export _TAG_REDIR_ERR=txt
   export _TAG_REDIR_OUT=txt
-
-  export PATH="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100/bin:$PATH"
-  export npm_config_nodedir="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100"
-  export npm_config_zoslib_include_dir="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100/include/node/zoslib"
-  export npm_config_zoslib_include_dir_cpp="/home/zhilong/nodejs/node-v20.12.2-os390-s390x-202405220100/include/node/zoslib/c++/v1"
+export PATH="/home/zhilong/node/node-v20.12.2-os390-s390x-202405220100/bin:$PATH"
+export npm_config_nodedir="/home/zhilong/node/node-v20.12.2-os390-s390x-202405220100"
+export npm_config_zoslib_include_dir="/home/zhilong/node/node-v20.12.2-os390-s390x-202405220100/include/node/zoslib"
+export npm_config_zoslib_include_dir_cpp="/home/zhilong/node/node-v20.12.2-os390-s390x-202405220100/include/node/zoslib/c++/v1"
 
   export CC=clang
   export CXX=clang++
@@ -42,7 +41,6 @@ zopen_init()
 
 zopen_install()
 {
-  ls -l go_package_port
   mkdir -p $ZOPEN_INSTALL_DIR
 #  npm install -g npm@10.7.0
   cd ..
@@ -51,12 +49,13 @@ zopen_install()
   export GOBIN="$(pwd)/go/bin"
   go install github.com/prometheus/promu@latest
   @echo "GOBIN = $GOBIN  GOPATH=$GOPATH"
+  git apply ./patches/node_patch
   cd ./prometheus
   make build
   # rm $GOBIN/promu
   export GOBIN=$OLD_GOBIN
-  mv ./prometheus/prometheus $GOBIN
-  mv ./prometheus/promtool $GOBIN
+  mv prometheus $ZOPEN_INSTALL_DIR/bin/prometheus
+  mv promtool $ZOPEN_INSTALL_DIR/bin/promtool
 }
 
 zopen_wharf()

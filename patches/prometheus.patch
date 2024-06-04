@@ -1,3 +1,16 @@
+diff --git a/Makefile b/Makefile
+index 0a4fca269..00be9e9b7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -137,7 +137,7 @@ plugins/plugins.go: plugins.yml plugins/generate.go
+ plugins: plugins/plugins.go
+ 
+ .PHONY: build
+-build: assets npm_licenses assets-compress plugins common-build
++build:  assets-compress plugins common-build
+ 
+ .PHONY: bench_tsdb
+ bench_tsdb: $(PROMU)
 diff --git a/cmd/promtool/main_test.go b/cmd/promtool/main_test.go
 index 6cfa48798..24bc4e64e 100644
 --- a/cmd/promtool/main_test.go
