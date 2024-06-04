@@ -1,13 +1,47 @@
 diff --git a/Makefile b/Makefile
-index 0a4fca269..00be9e9b7 100644
+index 0a4fca269..083c2f902 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -137,7 +137,7 @@ plugins/plugins.go: plugins.yml plugins/generate.go
+@@ -64,11 +64,13 @@ ui-bump-version:
+ 
+ .PHONY: ui-install
+ ui-install:
+-	cd $(UI_PATH) && npm install
++#	cd $(UI_PATH) && npm install
++	@echo "ui-install install throught patch"
+ 
+ .PHONY: ui-build
+ ui-build:
+-	cd $(UI_PATH) && CI="" npm run build
++#	cd $(UI_PATH) && CI="" npm run build
++	@echo "ui-build build throught patch"
+ 
+ .PHONY: ui-build-module
+ ui-build-module:
+@@ -117,11 +119,12 @@ endif
+ 
+ .PHONY: npm_licenses
+ npm_licenses: ui-install
+-	@echo ">> bundling npm licenses"
+-	rm -f $(REACT_APP_NPM_LICENSES_TARBALL) npm_licenses
+-	ln -s . npm_licenses
+-	find npm_licenses/$(UI_NODE_MODULES_PATH) -iname "license*" | tar cfj $(REACT_APP_NPM_LICENSES_TARBALL) --files-from=-
+-	rm -f npm_licenses
++	#@echo ">> bundling npm licenses"
++	#rm -f $(REACT_APP_NPM_LICENSES_TARBALL) npm_licenses
++	#ln -s . npm_licenses
++	#find npm_licenses/$(UI_NODE_MODULES_PATH) -iname "license*" | tar cfj $(REACT_APP_NPM_LICENSES_TARBALL) --files-from=-
++	#rm -f npm_licenses
++	@echo "npm_license through patch"
+ 
+ .PHONY: tarball
+ tarball: npm_licenses common-tarball
+@@ -137,7 +140,7 @@ plugins/plugins.go: plugins.yml plugins/generate.go
  plugins: plugins/plugins.go
  
  .PHONY: build
 -build: assets npm_licenses assets-compress plugins common-build
-+build:  assets-compress plugins common-build
++build:  assets npm_licenses assets-compress plugins common-build
  
  .PHONY: bench_tsdb
  bench_tsdb: $(PROMU)
