@@ -1,0 +1,348 @@
+diff --git a/Makefile b/Makefile
+index 0a4fca269..cc73a5c9e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -64,11 +64,13 @@ ui-bump-version:
+ 
+ .PHONY: ui-install
+ ui-install:
+-	cd $(UI_PATH) && npm install
++#	cd $(UI_PATH) && npm install
++	@echo "ui-install install throught patch"
+ 
+ .PHONY: ui-build
+ ui-build:
+-	cd $(UI_PATH) && CI="" npm run build
++#	cd $(UI_PATH) && CI="" npm run build
++	@echo "ui-build build throught patch"
+ 
+ .PHONY: ui-build-module
+ ui-build-module:
+@@ -117,11 +119,12 @@ endif
+ 
+ .PHONY: npm_licenses
+ npm_licenses: ui-install
+-	@echo ">> bundling npm licenses"
+-	rm -f $(REACT_APP_NPM_LICENSES_TARBALL) npm_licenses
+-	ln -s . npm_licenses
+-	find npm_licenses/$(UI_NODE_MODULES_PATH) -iname "license*" | tar cfj $(REACT_APP_NPM_LICENSES_TARBALL) --files-from=-
+-	rm -f npm_licenses
++	#@echo ">> bundling npm licenses"
++	#rm -f $(REACT_APP_NPM_LICENSES_TARBALL) npm_licenses
++	#ln -s . npm_licenses
++	#find npm_licenses/$(UI_NODE_MODULES_PATH) -iname "license*" | tar cfj $(REACT_APP_NPM_LICENSES_TARBALL) --files-from=-
++	#rm -f npm_licenses
++	@echo "npm_license through patch"
+ 
+ .PHONY: tarball
+ tarball: npm_licenses common-tarball
+@@ -137,7 +140,7 @@ plugins/plugins.go: plugins.yml plugins/generate.go
+ plugins: plugins/plugins.go
+ 
+ .PHONY: build
+-build: assets npm_licenses assets-compress plugins common-build
++build:  assets npm_licenses assets-compress plugins common-build
+ 
+ .PHONY: bench_tsdb
+ bench_tsdb: $(PROMU)
+diff --git a/cmd/promtool/main_test.go b/cmd/promtool/main_test.go
+index 6cfa48798..11117e4e7 100644
+--- a/cmd/promtool/main_test.go
++++ b/cmd/promtool/main_test.go
+@@ -235,6 +235,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 		syntaxOnly bool
+ 		err        string
+ 		errWindows string
++		errZos     string
+ 	}{
+ 		{
+ 			name:       "check with syntax only succeeds with nonexistent rule files",
+@@ -242,6 +243,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			syntaxOnly: true,
+ 			err:        "",
+ 			errWindows: "",
++			errZos:     "",
+ 		},
+ 		{
+ 			name:       "check without syntax only fails with nonexistent rule files",
+@@ -249,6 +251,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			syntaxOnly: false,
+ 			err:        "\"testdata/non-existent-file.yml\" does not point to an existing file",
+ 			errWindows: "\"testdata\\\\non-existent-file.yml\" does not point to an existing file",
++			errZos:     "\"testdata/non-existent-file.yml\" does not point to an existing file",	
+ 		},
+ 		{
+ 			name:       "check with syntax only succeeds with nonexistent service discovery files",
+@@ -256,6 +259,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			syntaxOnly: true,
+ 			err:        "",
+ 			errWindows: "",
++			errZos:     "",
+ 		},
+ 		// The test below doesn't fail because the file verification for ServiceDiscoveryConfigs doesn't fail the check if
+ 		// file isn't found; it only outputs a warning message.
+@@ -265,6 +269,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			syntaxOnly: false,
+ 			err:        "",
+ 			errWindows: "",
++			errZos:     "",
+ 		},
+ 		{
+ 			name:       "check with syntax only succeeds with nonexistent TLS files",
+@@ -272,6 +277,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			syntaxOnly: true,
+ 			err:        "",
+ 			errWindows: "",
++			errZos:     "",
+ 		},
+ 		{
+ 			name:       "check without syntax only fails with nonexistent TLS files",
+@@ -281,6 +287,8 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 				"stat testdata/nonexistent_cert_file.yml: no such file or directory",
+ 			errWindows: "error checking client cert file \"testdata\\\\nonexistent_cert_file.yml\": " +
+ 				"CreateFile testdata\\nonexistent_cert_file.yml: The system cannot find the file specified.",
++			errZos: "error checking client cert file \"testdata/nonexistent_cert_file.yml\": " +
++				"stat testdata/nonexistent_cert_file.yml: EDC5129I No such file or directory.",
+ 		},
+ 		{
+ 			name:       "check with syntax only succeeds with nonexistent credentials file",
+@@ -288,6 +296,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			syntaxOnly: true,
+ 			err:        "",
+ 			errWindows: "",
++			errZos:     "",
+ 		},
+ 		{
+ 			name:       "check without syntax only fails with nonexistent credentials file",
+@@ -297,6 +306,7 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 				"stat /random/file/which/does/not/exist.yml: no such file or directory",
+ 			errWindows: "error checking authorization credentials or bearer token file \"testdata\\\\random\\\\file\\\\which\\\\does\\\\not\\\\exist.yml\": " +
+ 				"CreateFile testdata\\random\\file\\which\\does\\not\\exist.yml: The system cannot find the path specified.",
++				errZos: "error checking authorization credentials or bearer token file \"/random/file/which/does/not/exist.yml\": " + "stat /random/file/which/does/not/exist.yml: EDC5129I No such file or directory.",
+ 		},
+ 	}
+ 	for _, test := range cases {
+@@ -305,6 +315,8 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			expectedErrMsg := test.err
+ 			if strings.Contains(runtime.GOOS, "windows") {
+ 				expectedErrMsg = test.errWindows
++			} else if strings.Contains(runtime.GOOS, "zos") {
++				expectedErrMsg = test.errZos
+ 			}
+ 			if expectedErrMsg != "" {
+ 				require.Equalf(t, expectedErrMsg, err.Error(), "Expected error %q, got %q", test.err, err.Error())
+diff --git a/discovery/triton/triton_test.go b/discovery/triton/triton_test.go
+index ca3896532..382908ed5 100644
+--- a/discovery/triton/triton_test.go
++++ b/discovery/triton/triton_test.go
+@@ -20,6 +20,7 @@ import (
+ 	"net/http"
+ 	"net/http/httptest"
+ 	"net/url"
++	"runtime"
+ 	"strconv"
+ 	"strings"
+ 	"testing"
+@@ -159,6 +160,14 @@ func TestTritonSDRefreshMultipleTargets(t *testing.T) {
+ }
+ 
+ func TestTritonSDRefreshNoServer(t *testing.T) {
++	if runtime.GOOS == "zos" {
++			tcpCon, _ := net.Dial("tcp", fmt.Sprintf("%s:%d", conf.Endpoint, conf.Port))
++			udpCon, _ := net.Dial("udp", fmt.Sprintf("%s:%d", conf.Endpoint, conf.Port))
++			if tcpCon != nil || udpCon != nil{
++					t.Skip("bypassing test because ", fmt.Sprintf("%s:%d", conf.Endpoint, conf.Port), " is used")
++			}
++	}
++
+ 	td, _ := newTritonDiscovery(conf)
+ 
+ 	_, err := td.refresh(context.Background())
+diff --git a/plugins/plugins.go b/plugins/plugins.go
+index e6994e206..a06e6607d 100644
+--- a/plugins/plugins.go
++++ b/plugins/plugins.go
+@@ -76,9 +76,6 @@ import (
+ 	// Register uyuni plugin.
+ 	_ "github.com/prometheus/prometheus/discovery/uyuni"
+ 
+-	// Register vultr plugin.
+-	_ "github.com/prometheus/prometheus/discovery/vultr"
+-
+ 	// Register xds plugin.
+ 	_ "github.com/prometheus/prometheus/discovery/xds"
+ 
+diff --git a/tsdb/fileutil/flock_unix.go b/tsdb/fileutil/flock_unix.go
+index 9637f073b..e2c095289 100644
+--- a/tsdb/fileutil/flock_unix.go
++++ b/tsdb/fileutil/flock_unix.go
+@@ -11,8 +11,8 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+-//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd
+-// +build darwin dragonfly freebsd linux netbsd openbsd
++//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || zos
++// +build darwin dragonfly freebsd linux netbsd openbsd zos
+ 
+ package fileutil
+ 
+diff --git a/tsdb/fileutil/mmap.go b/tsdb/fileutil/mmap.go
+index 4dbca4f97..ca6bdcb3d 100644
+--- a/tsdb/fileutil/mmap.go
++++ b/tsdb/fileutil/mmap.go
+@@ -15,6 +15,7 @@ package fileutil
+ 
+ import (
+ 	"os"
++	"runtime"
+ 
+ 	"github.com/pkg/errors"
+ )
+@@ -29,7 +30,13 @@ func OpenMmapFile(path string) (*MmapFile, error) {
+ }
+ 
+ func OpenMmapFileWithSize(path string, size int) (mf *MmapFile, retErr error) {
+-	f, err := os.Open(path)
++	var f *os.File
++	var err error
++	if runtime.GOOS == "zos" {
++			f, err = os.OpenFile(path, os.O_RDWR, 0o666)
++	} else {
++			f, err = os.Open(path)
++	}
+ 	if err != nil {
+ 		return nil, errors.Wrap(err, "try lock file")
+ 	}
+diff --git a/tsdb/fileutil/mmap_unix.go b/tsdb/fileutil/mmap_unix.go
+index 1fd7f48ff..778b4d8a5 100644
+--- a/tsdb/fileutil/mmap_unix.go
++++ b/tsdb/fileutil/mmap_unix.go
+@@ -18,12 +18,17 @@ package fileutil
+ 
+ import (
+ 	"os"
++	"runtime"
+ 
+ 	"golang.org/x/sys/unix"
+ )
+ 
+ func mmap(f *os.File, length int) ([]byte, error) {
+-	return unix.Mmap(int(f.Fd()), 0, length, unix.PROT_READ, unix.MAP_SHARED)
++    if runtime.GOOS == "zos" {
++		return unix.Mmap(int(f.Fd()), 0, length, unix.PROT_WRITE, unix.MAP_SHARED)
++    } else {
++		return unix.Mmap(int(f.Fd()), 0, length, unix.PROT_READ, unix.MAP_SHARED)
++    }
+ }
+ 
+ func munmap(b []byte) (err error) {
+diff --git a/tsdb/index/index.go b/tsdb/index/index.go
+index e21cfd5c9..364ae0fa3 100644
+--- a/tsdb/index/index.go
++++ b/tsdb/index/index.go
+@@ -25,11 +25,13 @@ import (
+ 	"math"
+ 	"os"
+ 	"path/filepath"
++	"runtime"
+ 	"sort"
+ 	"unsafe"
+ 
+ 	"github.com/pkg/errors"
+ 	"golang.org/x/exp/slices"
++	"golang.org/x/sys/unix"
+ 
+ 	"github.com/prometheus/prometheus/model/labels"
+ 	"github.com/prometheus/prometheus/storage"
+@@ -547,11 +549,14 @@ func (w *Writer) finishSymbols() error {
+ 	if err := w.f.Flush(); err != nil {
+ 		return err
+ 	}
+-
++	
+ 	sf, err := fileutil.OpenMmapFile(w.f.name)
+ 	if err != nil {
+ 		return err
+ 	}
++	if runtime.GOOS == "zos" {
++		defer sf.Close()
++	}
+ 	w.symbolFile = sf
+ 	hash := crc32.Checksum(w.symbolFile.Bytes()[w.toc.Symbols+4:hashPos], castagnoliTable)
+ 	w.buf1.Reset()
+@@ -560,8 +565,18 @@ func (w *Writer) finishSymbols() error {
+ 		return err
+ 	}
+ 
++	if runtime.GOOS == "zos" {
++		if err := unix.Msync(sf.Bytes(), unix.MS_SYNC | unix.MS_INVALIDATE); err != nil {
++			return err
++		}
++		b := make([]byte, len(w.symbolFile.Bytes()))
++                copy(b, w.symbolFile.Bytes())
++                w.symbols, err = NewSymbols(realByteSlice(b), FormatV2, int(w.toc.Symbols))
++	} else {
++		w.symbols, err = NewSymbols(realByteSlice(w.symbolFile.Bytes()), FormatV2, int(w.toc.Symbols))
++	}
++
+ 	// Load in the symbol table efficiently for the rest of the index writing.
+-	w.symbols, err = NewSymbols(realByteSlice(w.symbolFile.Bytes()), FormatV2, int(w.toc.Symbols))
+ 	if err != nil {
+ 		return errors.Wrap(err, "read symbols")
+ 	}
+@@ -574,13 +589,16 @@ func (w *Writer) writeLabelIndices() error {
+ 	}
+ 
+ 	// Find all the label values in the tmp posting offset table.
++	var d encoding.Decbuf
++	
+ 	f, err := fileutil.OpenMmapFile(w.fPO.name)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	defer f.Close()
++	d = encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.fPO.pos))
+ 
+-	d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.fPO.pos))
++	
+ 	cnt := w.cntPO
+ 	current := []byte{}
+ 	values := []uint32{}
+@@ -825,15 +843,16 @@ func (w *Writer) writePostingsToTmpFiles() error {
+ 	if err := w.f.Flush(); err != nil {
+ 		return err
+ 	}
++	
+ 	f, err := fileutil.OpenMmapFile(w.f.name)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	defer f.Close()
++	d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
+ 
+ 	// Write out the special all posting.
+ 	offsets := []uint32{}
+-	d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
+ 	d.Skip(int(w.toc.Series))
+ 	for d.Len() > 0 {
+ 		d.ConsumePadding()
+@@ -878,8 +897,8 @@ func (w *Writer) writePostingsToTmpFiles() error {
+ 		}
+ 		// Label name -> label value -> positions.
+ 		postings := map[uint32]map[uint32][]uint32{}
+-
+ 		d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
++		
+ 		d.Skip(int(w.toc.Series))
+ 		for d.Len() > 0 {
+ 			d.ConsumePadding()
+@@ -1026,7 +1045,7 @@ func (w *Writer) Close() error {
+ 	// Even if this fails, we need to close all the files.
+ 	ensureErr := w.ensureStage(idxStageDone)
+ 
+-	if w.symbolFile != nil {
++	if runtime.GOOS != "zos" && w.symbolFile != nil {
+ 		if err := w.symbolFile.Close(); err != nil {
+ 			return err
+ 		}
