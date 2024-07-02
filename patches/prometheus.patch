@@ -1,5 +1,5 @@
 diff --git a/Makefile b/Makefile
-index 0a4fca269..083c2f902 100644
+index 0a4fca269..cc73a5c9e 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -64,11 +64,13 @@ ui-bump-version:
@@ -46,7 +46,7 @@ index 0a4fca269..083c2f902 100644
  .PHONY: bench_tsdb
  bench_tsdb: $(PROMU)
 diff --git a/cmd/promtool/main_test.go b/cmd/promtool/main_test.go
-index 6cfa48798..24bc4e64e 100644
+index 6cfa48798..11117e4e7 100644
 --- a/cmd/promtool/main_test.go
 +++ b/cmd/promtool/main_test.go
 @@ -235,6 +235,7 @@ func TestCheckConfigSyntax(t *testing.T) {
@@ -69,7 +69,7 @@ index 6cfa48798..24bc4e64e 100644
  			syntaxOnly: false,
  			err:        "\"testdata/non-existent-file.yml\" does not point to an existing file",
  			errWindows: "\"testdata\\\\non-existent-file.yml\" does not point to an existing file",
-+			errZos:     "\"testdata/non-existent-file.yml\" does not point to an existing file",
++			errZos:     "\"testdata/non-existent-file.yml\" does not point to an existing file",	
  		},
  		{
  			name:       "check with syntax only succeeds with nonexistent service discovery files",
@@ -101,8 +101,8 @@ index 6cfa48798..24bc4e64e 100644
  				"stat testdata/nonexistent_cert_file.yml: no such file or directory",
  			errWindows: "error checking client cert file \"testdata\\\\nonexistent_cert_file.yml\": " +
  				"CreateFile testdata\\nonexistent_cert_file.yml: The system cannot find the file specified.",
-+			 errZos: "error checking client cert file \"testdata/nonexistent_cert_file.yml\": " +
-+                "stat testdata/nonexistent_cert_file.yml: EDC5129I No such file or directory.",
++			errZos: "error checking client cert file \"testdata/nonexistent_cert_file.yml\": " +
++				"stat testdata/nonexistent_cert_file.yml: EDC5129I No such file or directory.",
  		},
  		{
  			name:       "check with syntax only succeeds with nonexistent credentials file",
@@ -114,25 +114,23 @@ index 6cfa48798..24bc4e64e 100644
  		},
  		{
  			name:       "check without syntax only fails with nonexistent credentials file",
-@@ -297,6 +306,8 @@ func TestCheckConfigSyntax(t *testing.T) {
+@@ -297,6 +306,7 @@ func TestCheckConfigSyntax(t *testing.T) {
  				"stat /random/file/which/does/not/exist.yml: no such file or directory",
  			errWindows: "error checking authorization credentials or bearer token file \"testdata\\\\random\\\\file\\\\which\\\\does\\\\not\\\\exist.yml\": " +
  				"CreateFile testdata\\random\\file\\which\\does\\not\\exist.yml: The system cannot find the path specified.",
-+			 errZos: "error checking authorization credentials or bearer token file \"/random/file/which/does/not/exist.yml\": " +
-+                "stat /random/file/which/does/not/exist.yml: EDC5129I No such file or directory.",
++				errZos: "error checking authorization credentials or bearer token file \"/random/file/which/does/not/exist.yml\": " + "stat /random/file/which/does/not/exist.yml: EDC5129I No such file or directory.",
  		},
  	}
  	for _, test := range cases {
-@@ -306,6 +317,9 @@ func TestCheckConfigSyntax(t *testing.T) {
+@@ -305,6 +315,8 @@ func TestCheckConfigSyntax(t *testing.T) {
+ 			expectedErrMsg := test.err
  			if strings.Contains(runtime.GOOS, "windows") {
  				expectedErrMsg = test.errWindows
++			} else if strings.Contains(runtime.GOOS, "zos") {
++				expectedErrMsg = test.errZos
  			}
-+			if strings.Contains(runtime.GOOS, "zos") {
-+                expectedErrMsg = test.errZos
-+            }
  			if expectedErrMsg != "" {
  				require.Equalf(t, expectedErrMsg, err.Error(), "Expected error %q, got %q", test.err, err.Error())
- 				return
 diff --git a/discovery/triton/triton_test.go b/discovery/triton/triton_test.go
 index ca3896532..382908ed5 100644
 --- a/discovery/triton/triton_test.go
@@ -240,7 +238,7 @@ index 1fd7f48ff..778b4d8a5 100644
  
  func munmap(b []byte) (err error) {
 diff --git a/tsdb/index/index.go b/tsdb/index/index.go
-index e21cfd5c9..0f7042808 100644
+index e21cfd5c9..364ae0fa3 100644
 --- a/tsdb/index/index.go
 +++ b/tsdb/index/index.go
 @@ -25,11 +25,13 @@ import (
@@ -257,7 +255,7 @@ index e21cfd5c9..0f7042808 100644
  
  	"github.com/prometheus/prometheus/model/labels"
  	"github.com/prometheus/prometheus/storage"
-@@ -547,7 +549,7 @@ func (w *Writer) finishSymbols() error {
+@@ -547,11 +549,14 @@ func (w *Writer) finishSymbols() error {
  	if err := w.f.Flush(); err != nil {
  		return err
  	}
@@ -266,7 +264,14 @@ index e21cfd5c9..0f7042808 100644
  	sf, err := fileutil.OpenMmapFile(w.f.name)
  	if err != nil {
  		return err
-@@ -560,6 +562,12 @@ func (w *Writer) finishSymbols() error {
+ 	}
++	if runtime.GOOS == "zos" {
++		defer sf.Close()
++	}
+ 	w.symbolFile = sf
+ 	hash := crc32.Checksum(w.symbolFile.Bytes()[w.toc.Symbols+4:hashPos], castagnoliTable)
+ 	w.buf1.Reset()
+@@ -560,8 +565,18 @@ func (w *Writer) finishSymbols() error {
  		return err
  	}
  
@@ -274,66 +279,47 @@ index e21cfd5c9..0f7042808 100644
 +		if err := unix.Msync(sf.Bytes(), unix.MS_SYNC | unix.MS_INVALIDATE); err != nil {
 +			return err
 +		}
++		b := make([]byte, len(w.symbolFile.Bytes()))
++                copy(b, w.symbolFile.Bytes())
++                w.symbols, err = NewSymbols(realByteSlice(b), FormatV2, int(w.toc.Symbols))
++	} else {
++		w.symbols, err = NewSymbols(realByteSlice(w.symbolFile.Bytes()), FormatV2, int(w.toc.Symbols))
 +	}
 +
  	// Load in the symbol table efficiently for the rest of the index writing.
- 	w.symbols, err = NewSymbols(realByteSlice(w.symbolFile.Bytes()), FormatV2, int(w.toc.Symbols))
+-	w.symbols, err = NewSymbols(realByteSlice(w.symbolFile.Bytes()), FormatV2, int(w.toc.Symbols))
  	if err != nil {
-@@ -574,13 +582,23 @@ func (w *Writer) writeLabelIndices() error {
+ 		return errors.Wrap(err, "read symbols")
+ 	}
+@@ -574,13 +589,16 @@ func (w *Writer) writeLabelIndices() error {
  	}
  
  	// Find all the label values in the tmp posting offset table.
--	f, err := fileutil.OpenMmapFile(w.fPO.name)
--	if err != nil {
--		return err
 +	var d encoding.Decbuf
-+	if runtime.GOOS == "zos" {
-+		data, err := os.ReadFile(w.fPO.name)
-+		if err != nil {
-+			return err
-+		}
-+		d = encoding.NewDecbufRaw(realByteSlice(data), int(w.fPO.pos))
-+	} else {
-+		f, err := fileutil.OpenMmapFile(w.fPO.name)
-+		if err != nil {
-+			return err
-+		}
-+		defer f.Close()
-+		d = encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.fPO.pos))
- 	}
--	defer f.Close()
--
--	d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.fPO.pos))
 +	
+ 	f, err := fileutil.OpenMmapFile(w.fPO.name)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	defer f.Close()
++	d = encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.fPO.pos))
+ 
+-	d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.fPO.pos))
 +	
  	cnt := w.cntPO
  	current := []byte{}
  	values := []uint32{}
-@@ -825,15 +843,26 @@ func (w *Writer) writePostingsToTmpFiles() error {
+@@ -825,15 +843,16 @@ func (w *Writer) writePostingsToTmpFiles() error {
  	if err := w.f.Flush(); err != nil {
  		return err
  	}
--	f, err := fileutil.OpenMmapFile(w.f.name)
--	if err != nil {
--		return err
-+	var d encoding.Decbuf
-+	var data []byte
-+	var f *fileutil.MmapFile
-+	if runtime.GOOS == "zos" {
-+		data, err := os.ReadFile(w.f.name)
-+		if err != nil {
-+			return err
-+		}
-+		d = encoding.NewDecbufRaw(realByteSlice(data), int(w.toc.LabelIndices))
-+	} else {
-+		f, err := fileutil.OpenMmapFile(w.f.name)
-+		if err != nil {
-+			return err
-+		}
-+		defer f.Close()
-+		d = encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
++	
+ 	f, err := fileutil.OpenMmapFile(w.f.name)
+ 	if err != nil {
+ 		return err
  	}
--	defer f.Close()
+ 	defer f.Close()
++	d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
  
  	// Write out the special all posting.
  	offsets := []uint32{}
@@ -341,19 +327,22 @@ index e21cfd5c9..0f7042808 100644
  	d.Skip(int(w.toc.Series))
  	for d.Len() > 0 {
  		d.ConsumePadding()
-@@ -878,8 +907,13 @@ func (w *Writer) writePostingsToTmpFiles() error {
+@@ -878,8 +897,8 @@ func (w *Writer) writePostingsToTmpFiles() error {
  		}
  		// Label name -> label value -> positions.
  		postings := map[uint32]map[uint32][]uint32{}
 -
--		d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
-+		var d encoding.Decbuf
-+		if runtime.GOOS == "zos" {
-+			d = encoding.NewDecbufRaw(realByteSlice(data), int(w.toc.LabelIndices))
-+		} else {
-+			d = encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
-+		}
+ 		d := encoding.NewDecbufRaw(realByteSlice(f.Bytes()), int(w.toc.LabelIndices))
 +		
  		d.Skip(int(w.toc.Series))
  		for d.Len() > 0 {
  			d.ConsumePadding()
+@@ -1026,7 +1045,7 @@ func (w *Writer) Close() error {
+ 	// Even if this fails, we need to close all the files.
+ 	ensureErr := w.ensureStage(idxStageDone)
+ 
+-	if w.symbolFile != nil {
++	if runtime.GOOS != "zos" && w.symbolFile != nil {
+ 		if err := w.symbolFile.Close(); err != nil {
+ 			return err
+ 		}

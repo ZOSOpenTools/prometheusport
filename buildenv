@@ -3,9 +3,9 @@
 PROMETHEUS_VERSION="2.45.5" # Specify a stable release
 export ZOPEN_STABLE_TAG="v${PROMETHEUS_VERSION}"
 export ZOPEN_STABLE_URL="https://github.com/prometheus/prometheus.git"
-export ZOPEN_STABLE_DEPS="make grep git comp_clang comp_go"
+export ZOPEN_STABLE_DEPS="make grep git comp_clang comp_go findutils parse-gotest gzip tar bzip2"
 export ZOPEN_DEV_URL="https://github.com/prometheus/prometheus.git"
-export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go findutils tar bzip2 gizp"
+export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go findutils tar bzip2 gizp parse-gotest"
 export ZOPEN_BUILD_LINE="STABLE"
 export ZOPEN_RUNTIME_DEPS="bash"
 export ZOPEN_CATEGORIES="database devops graphics"
@@ -65,11 +65,13 @@ zopen_check_results()
   pfx="$2"
   chk="$1/$2_check.log"
  
-  total=$(grep -Eo "Action:Run" $chk)
+  summary="$(parse-gotest -summary $chk)"
+  total=$(echo "$summary" | grep "total" | cut -d':' -f2)
+  fail=$(echo "$summary" | grep "fail" | cut -d':' -f2)
 
   # Echo the following information to gauge build health
-  echo "actualFailures:0"
-  echo "totalTests:1"
+  echo "actualFailures:$fail"
+  echo "totalTests:$total"
   echo "expectedFailures:0"
   echo "expectedTotalTests:1"
 }
