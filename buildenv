@@ -3,9 +3,9 @@
 PROMETHEUS_VERSION="2.45.5" # Specify a stable release
 export ZOPEN_STABLE_TAG="v${PROMETHEUS_VERSION}"
 export ZOPEN_STABLE_URL="https://github.com/prometheus/prometheus.git"
-export ZOPEN_STABLE_DEPS="make grep wharf git comp_clang comp_go python findutils tar bzip2 gzip which"
+export ZOPEN_STABLE_DEPS="make grep git comp_clang comp_go findutils parse-gotest gzip tar bzip2"
 export ZOPEN_DEV_URL="https://github.com/prometheus/prometheus.git"
-export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go findutils tar bzip2 gizp"
+export ZOPEN_DEV_DEPS="make grep wharf git comp_clang comp_go findutils tar bzip2 gizp parse-gotest"
 export ZOPEN_BUILD_LINE="STABLE"
 export ZOPEN_RUNTIME_DEPS="bash"
 export ZOPEN_CATEGORIES="database devops graphics"
@@ -14,6 +14,7 @@ export ZOPEN_COMP="CLANG"
 export ZOPEN_CONFIGURE="zopen_wharf"
 export ZOPEN_MAKE="skip"
 export ZOPEN_INSTALL="zopen_install"
+export ZOPEN_CHECK="zopen_check"
 
 zopen_init()
 {
@@ -23,25 +24,19 @@ zopen_init()
   export PATH=$PATH:$GOROOT/go-build-zos/bin
   export _BPXK_AUTOCVT=ON
   export _CEE_RUNOPTS="$_CEE_RUNOPTS FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
-
-  echo "zopen init"
-  ls -l go_package_port
 }
 
 zopen_install()
 {
   mkdir -p $ZOPEN_INSTALL_DIR/bin
-#  npm install -g npm@10.7.0
   cd ..
   mkdir "$(pwd)/go/bin"
   OLD_GOBIN=$GOBIN
   export GOBIN="$(pwd)/go/bin"
   go install github.com/prometheus/promu@latest
-  @echo "GOBIN = $GOBIN  GOPATH=$GOPATH"
   cd ./prometheus
   git apply --whitespace=nowarn ../patches/node_patch
   make build
-  # rm $GOBIN/promu
   export GOBIN=$OLD_GOBIN
   mv prometheus $ZOPEN_INSTALL_DIR/bin/prometheus
   mv promtool $ZOPEN_INSTALL_DIR/bin/promtool
@@ -55,21 +50,28 @@ zopen_wharf()
   go work use ./go_package_port/github.com/edsrzf/mmap-go
   go work use ./go_package_port/github.com/fsnotify/fsnotify
   go work edit -replace=golang.org/x/sys=golang.org/x/sys@v0.20.0
-  # wharf ./prometheus/...
-  # wharf -f ./prometheus/discovery/file
   cd ./prometheus
 }
 
+
+zopen_check()
+{
+  go test -v -json ./...
+}
 
 zopen_check_results()
 {
   dir="$1"
   pfx="$2"
   chk="$1/$2_check.log"
+ 
+  summary="$(parse-gotest -summary $chk)"
+  total=$(echo "$summary" | grep "total" | cut -d':' -f2)
+  fail=$(echo "$summary" | grep "fail" | cut -d':' -f2)
 
   # Echo the following information to gauge build health
-  echo "actualFailures:0"
-  echo "totalTests:1"
+  echo "actualFailures:$fail"
+  echo "totalTests:$total"
   echo "expectedFailures:0"
   echo "expectedTotalTests:1"
 }
